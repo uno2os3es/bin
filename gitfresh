@@ -1,0 +1,22 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+# Save current state
+git stash
+
+# Create completely new repo structure
+git checkout --orphan clean_slate
+git rm -rf . 
+
+# Restore current state
+git stash pop
+
+# Stage and commit
+git add -A
+git commit -m "Initial commit"
+
+# Delete old branches
+git branch -D master
+git branch -m clean_slate master
+
+# Force push
+git push -f origin master
