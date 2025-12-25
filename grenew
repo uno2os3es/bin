@@ -1,0 +1,8 @@
+# Keep only the current state as a new first commit
+git filter-branch --subdirectory-filter .  -- --all
+
+# Or reset to current HEAD with no history
+git rev-parse HEAD > . git/refs/heads/main
+
+# Force push
+git push -f origin main

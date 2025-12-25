@@ -1,0 +1,108 @@
+#!/data/data/com.termux/files/usr/bin/python
+import os
+import rignore
+from pathlib import Path
+import regex as re
+from deep_translator import GoogleTranslator
+from multiprocessing import Pool, cpu_count
+from tqdm import tqdm
+
+DIRECTORY = '.'
+
+# Detect non‑ASCII characters
+non_english_pattern = re.compile(r'[^\x00-\x7F]')
+
+
+def is_english(text):
+    return not non_english_pattern.search(text)
+
+
+def chunk_text(text, size=800):
+    """Split text into chunks of ~size characters."""
+    return [text[i : i + size] for i in range(0, len(text), size)]
+
+
+def translate_chunk(chunk):
+    try:
+        result = GoogleTranslator(source='auto', target='en').translate(chunk)
+        if result is None:
+            return chunk
+        return result
+    except Exception:
+        return chunk
+
+
+def translate_file_content(text):
+    """Translate full text using chunking + multiprocessing."""
+    chunks = chunk_text(text)
+
+    with Pool(cpu_count()) as pool:
+        translated_chunks = list(
+            tqdm(pool.imap(translate_chunk, chunks), total=len(chunks), desc='Translating content')
+        )
+
+    return ''.join(translated_chunks)
+
+
+def detect_non_english_content(filepath):
+    """Return True if file contains non‑ASCII characters."""
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            content = f.read()
+            return not is_english(content)
+    except Exception:
+        return False
+
+
+def process_files(directory):
+    paths = [Path(p) for p in rignore.walk(directory)]
+    text_files = [p for p in paths if p.is_file()]
+
+    for fp in tqdm(text_files, desc='Scanning files'):
+        # Only translate text-like files
+        if fp.suffix.lower() not in ['.txt', '.md', '.srt', '.py', '.json', '.html']:
+            continue
+        # Skip already translated files
+        if fp.stem.endswith('_en'):
+            continue
+
+        translated_fp = fp.with_name(f'{fp.stem}_en{fp.suffix}')
+        if translated_fp.exists():
+            continue
+        if re.search(r'_en(_\d+)?$', fp.stem):
+            continue
+        if '_eng' in fp.stem:
+            print('>>>>>repeated<<<<<<')
+            continue
+
+        # Skip English-only content
+        if not detect_non_english_content(fp):
+            continue
+
+        # Read original content
+        try:
+            original_text = fp.read_text(encoding='utf-8', errors='ignore')
+        except Exception:
+            continue
+        if not original_text:
+            continue
+        # Translate with chunking + multiprocessing
+        translated = translate_file_content(original_text)
+
+        # Build new filename
+        new_fp = fp.with_name(f'{fp.stem}_en{fp.suffix}')
+
+        # Avoid overwriting
+        counter = 1
+        while new_fp.exists():
+            new_fp = fp.with_name(f'{fp.stem}_en_{counter}{fp.suffix}')
+            counter += 1
+
+        # Save translated content
+        new_fp.write_text(translated, encoding='utf-8')
+
+        print(f'Translated: {fp.name} → {new_fp.name}')
+
+
+if __name__ == '__main__':
+    process_files(DIRECTORY)

@@ -1,0 +1,29 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# 1. Verify current state (make sure you're on the right branch)
+git status
+git log --oneline -5  # See last 5 commits
+
+# 2. Create orphan branch with current state
+git checkout --orphan fresh_start
+
+# 3. Stage everything
+git add -A
+
+# 4. Create first commit
+git commit -m "Initial commit"
+
+# 5. Delete old history branch
+git branch -D main  # or 'master' depending on your branch name
+
+# 6. Rename new branch to main
+git branch -m fresh_start main
+
+# 7.  Verify (should show only 1 commit)
+git log --oneline
+
+# 8. Force push to remote
+git push -f origin main
+
+# 9. Clean up reflog (optional, removes recovery options)
+git reflog expire --expire=now --all
+git gc --prune=now

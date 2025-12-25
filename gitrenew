@@ -1,0 +1,19 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+# Create a new orphan branch (no history)
+git checkout --orphan new_branch
+
+# Stage all current files
+git add -A
+
+# Commit as the first commit
+git commit -m "Initial commit"
+
+# Delete the old branch
+git branch -D main
+
+# Rename new branch to main (or master, depending on your default branch)
+git branch -m new_branch main
+
+# Force push to remote (WARNING: This rewrites history!)
+git push -f origin main

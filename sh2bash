@@ -1,0 +1,2 @@
+#!/data/data/com.termux/files/usr/bin/bash
+replacer '#!/bin/sh\n' '#!/data/data/com.termux/files/usr/bin/bash\n'

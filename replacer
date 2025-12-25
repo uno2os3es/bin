@@ -1,0 +1,288 @@
+#!/usr/bin/env python3
+"""
+Text replacement script for files in current directory recursively. 
+Handles word boundary matching to avoid partial text replacements.
+Uses the 'regex' library for enhanced pattern matching capabilities. 
+
+Usage: 
+    python replace_text.py old_text new_text [options]
+
+Examples:
+    python replace_text. py "import re" "import requests"
+    python replace_text. py "import re\n" "import requests\n"
+    python replace_text.py "old_pattern" "new_pattern" --dry-run
+    python replace_text.py "foo" "bar" --extensions .py,. txt,. md
+    python replace_text.py "pattern" "replacement" --use-regex
+
+Installation: 
+    pip install regex
+"""
+
+import os
+import sys
+import argparse
+from pathlib import Path
+from typing import List, Tuple, Set
+
+try:
+    import regex
+except ImportError:
+    print("❌ Error: 'regex' library is required but not installed.")
+    print("Install it with: pip install regex")
+    sys.exit(1)
+
+
+def is_text_file(file_path: str, text_extensions: Set[str]) -> bool:
+    """Check if file is a text-based file."""
+    _, ext = os.path.splitext(file_path)
+    
+    # If no extensions specified, try to read as text
+    if not text_extensions:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                f.read(1024)
+            return True
+        except (UnicodeDecodeError, IOError):
+            return False
+    
+    return ext. lower() in text_extensions
+
+
+def escape_special_chars(text: str) -> str:
+    """Escape special regex characters."""
+    return regex.escape(text)
+
+
+def should_use_word_boundaries(text: str) -> bool:
+    """
+    Determine if word boundaries should be used. 
+    Returns False if text contains newlines or other special boundaries.
+    """
+    return '\n' not in text and '\r' not in text
+
+
+def create_pattern(text: str, use_word_boundaries: bool = True) -> str:
+    """
+    Create a regex pattern with optional word boundaries.
+    
+    Args:
+        text: Text to search for
+        use_word_boundaries: Whether to use word boundary matching
+    
+    Returns:
+        Regex pattern string
+    """
+    escaped = escape_special_chars(text)
+    
+    # Don't use word boundaries if text contains newlines
+    if not should_use_word_boundaries(text):
+        return escaped
+    
+    # Use word boundaries for alphanumeric text
+    if use_word_boundaries:
+        return r'\b' + escaped + r'\b'
+    
+    return escaped
+
+
+def replace_in_file(
+    file_path: str,
+    old_text: str,
+    new_text: str,
+    use_word_boundaries: bool = True,
+    is_regex_pattern: bool = False,
+    dry_run: bool = False
+) -> Tuple[bool, int]:
+    """
+    Replace text in a single file.
+    
+    Args:
+        file_path: Path to the file
+        old_text: Text to find (or regex pattern if is_regex_pattern=True)
+        new_text: Text to replace with
+        use_word_boundaries:  Whether to use word boundary matching
+        is_regex_pattern: If True, treat old_text as a regex pattern directly
+        dry_run: If True, don't write changes
+    
+    Returns:
+        Tuple of (file_modified, number_of_replacements)
+    """
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except (UnicodeDecodeError, IOError) as e:
+        print(f"⚠️  Skipped (read error): {file_path}")
+        return False, 0
+    
+    # Create pattern
+    try:
+        if is_regex_pattern:
+            # Use old_text directly as a regex pattern
+            pattern = old_text
+        else:
+            # Create pattern with optional word boundaries
+            pattern = create_pattern(old_text, use_word_boundaries)
+        
+        new_content, count = regex.subn(pattern, new_text, content)
+    except regex.error as e:
+        print(f"⚠️  Skipped (regex error): {file_path} - {e}")
+        return False, 0
+    
+    # Only write if content changed
+    if new_content != content:
+        if not dry_run:
+            try:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+                print(f"✓ Modified: {file_path} ({count} replacement{'s' if count != 1 else ''})")
+                return True, count
+            except IOError as e:
+                print(f"⚠️  Failed to write: {file_path} - {e}")
+                return False, 0
+        else: 
+            print(f"[DRY RUN] Would modify: {file_path} ({count} replacement{'s' if count != 1 else ''})")
+            return True, count
+    
+    return False, 0
+
+
+def find_text_files(
+    root_dir: str = '.',
+    text_extensions: Set[str] = None
+) -> List[str]:
+    """Recursively find all text-based files."""
+    if text_extensions is None:
+        text_extensions = set()
+    
+    text_files = []
+    
+    for root, dirs, files in os.walk(root_dir):
+        # Skip hidden directories and common non-code directories
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', 'node_modules', '. git']]
+        
+        for file in files:
+            if file.startswith('.'):
+                continue
+            
+            file_path = os. path.join(root, file)
+            if is_text_file(file_path, text_extensions):
+                text_files.append(file_path)
+    
+    return sorted(text_files)
+
+
+def main():
+    parser = argparse. ArgumentParser(
+        description='Replace text in files recursively using the regex library',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  # Simple text replacement with word boundaries
+  python replace_text.py "import re" "import requests"
+  
+  # With newlines
+  python replace_text.py "import re\\n" "import requests\\n"
+  
+  # Using regex patterns
+  python replace_text.py "def\\s+\\w+\\s*\\(" "async def \\g<0>" --use-regex
+  
+  # Dry run to preview changes
+  python replace_text. py "old_text" "new_text" --dry-run
+  
+  # Only process Python files
+  python replace_text. py "foo" "bar" --extensions .py
+  
+  # Disable word boundaries (allows partial matches)
+  python replace_text.py "re" "requests" --no-word-boundaries
+        '''
+    )
+    
+    parser.add_argument('old_text', help='Text to find (or regex pattern with --use-regex)')
+    parser.add_argument('new_text', help='Text to replace with')
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Show what would be changed without modifying files'
+    )
+    parser.add_argument(
+        '--extensions',
+        default='',
+        help='Comma-separated file extensions to process (e.g., .py,.txt,.md). If not specified, all text files are processed.'
+    )
+    parser.add_argument(
+        '--no-word-boundaries',
+        action='store_true',
+        help='Disable word boundary matching (allows partial matches)'
+    )
+    parser.add_argument(
+        '--dir',
+        default='.',
+        help='Root directory to search (default: current directory)'
+    )
+    parser.add_argument(
+        '--use-regex',
+        action='store_true',
+        help='Treat old_text as a regex pattern directly (more powerful regex features)'
+    )
+    
+    args = parser.parse_args()
+    
+    # Decode escape sequences
+    old_text = args.old_text.encode().decode('unicode_escape')
+    new_text = args.new_text.encode().decode('unicode_escape')
+    
+    # Parse extensions
+    text_extensions = set()
+    if args.extensions:
+        text_extensions = {ext.strip() if ext.startswith('.') else '.' + ext.strip() 
+                          for ext in args. extensions.split(',') if ext.strip()}
+    
+    # Find all text files
+    files = find_text_files(args. dir, text_extensions)
+    
+    if not files:
+        print("❌ No text files found to process.")
+        return 1
+    
+    print(f"📁 Found {len(files)} text file(s) to process")
+    print(f"🔍 Searching for:    '{repr(old_text)}'")
+    print(f"🔄 Will replace with:   '{repr(new_text)}'")
+    if args.use_regex:
+        print("🔧 Using regex library with regex patterns")
+    if args.dry_run:
+        print("🧪 DRY RUN MODE - No files will be modified\n")
+    else:
+        print()
+    
+    # Process files
+    total_replacements = 0
+    files_modified = 0
+    
+    for file_path in files: 
+        modified, count = replace_in_file(
+            file_path,
+            old_text,
+            new_text,
+            use_word_boundaries=not args. no_word_boundaries,
+            is_regex_pattern=args. use_regex,
+            dry_run=args.dry_run
+        )
+        if modified:
+            files_modified += 1
+            total_replacements += count
+    
+    # Summary
+    print(f"\n{'='*60}")
+    if args.dry_run:
+        print(f"📊 DRY RUN Summary:")
+    else:
+        print(f"📊 Summary:")
+    print(f"  Files modified:  {files_modified}/{len(files)}")
+    print(f"  Total replacements:   {total_replacements}")
+    print(f"{'='*60}")
+    
+    return 0 if total_replacements > 0 or args.dry_run else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
