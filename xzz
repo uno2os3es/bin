@@ -1,0 +1,2 @@
+#!/data/data/com.termux/files/usr/bin/bash
+xz -z -6  --threads=4 -v "$@"

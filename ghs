@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+gh search repos "$@" --limit 20 --json url,size | jq -r '.[] | "\(.url) \(.size)"' >> "$@".txt
+echo "check $@"

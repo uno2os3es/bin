@@ -1,0 +1,60 @@
+#!/data/data/com.termux/files/usr/bin/env python3
+
+import multiprocessing as mp
+import os
+import subprocess
+
+from tqdm import tqdm
+
+# List of file extensions to search for
+FILE_EXTENSIONS = {'.c', '.cpp', '.cxx', '.cc', '.h', '.hh', '.hpp', '.hxx'}
+
+
+# Function to run clang-format on a single file
+def format_file(file_path):
+    try:
+        subprocess.run(['clang-format', '-i', file_path], check=True)
+        return file_path
+    except subprocess.CalledProcessError:
+        return None
+
+
+# Function to find all files with the specified extensions in the current directory recursively
+def find_files():
+    all_files = []
+    for root, _, files in os.walk('.'):
+        for file in files:
+            if any(file.endswith(ext) for ext in FILE_EXTENSIONS):
+                all_files.append(os.path.join(root, file))
+    return all_files
+
+
+# Function to run the formatting process in parallel
+def format_files_parallel(files):
+    # Set up multiprocessing pool
+    with mp.Pool(mp.cpu_count()) as pool:
+        # Use tqdm for progress tracking
+        formatted_files = list(
+            tqdm(pool.imap(format_file, files), total=len(files), desc=''))
+    return formatted_files
+
+
+# Main function to execute the script
+def main() -> None:
+    # Step 1: Find all files to format
+    files_to_format = find_files()
+
+    if not files_to_format:
+        print('No files found with the specified extensions.')
+        return
+
+    # Step 2: Format files in parallel
+    formatted_files = format_files_parallel(files_to_format)
+
+    # Step 3: Print the result
+    formatted_files = [file for file in formatted_files if file is not None]
+    print(f'\nFormatted {len(formatted_files)} files.')
+
+
+if __name__ == '__main__':
+    main()

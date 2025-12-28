@@ -1,0 +1,6 @@
+#!/data/data/com.termux/files/usr/bin/bash
+
+gh search repos "language:Jupyter-Notebook stars:>100" \
+  --sort stars \
+  --order desc \
+  --limit 50

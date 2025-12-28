@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+import csv
+import os
+import sys
+from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from tqdm import tqdm
+
+
+def process_file(filepath):
+    """Read lines from a file and return a Counter of lines."""
+    counter = Counter()
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                line = line.strip()
+                if line:  # skip empty lines
+                    counter[line] += 1
+    except Exception as e:
+        print(f'Error reading {filepath}: {e}')
+    return counter
+
+
+def collect_lines_for_extension(ext):
+    """Collect lines for a given extension and save to CSV."""
+    # Find all files with given extension
+    files = []
+    for root, dirs, filenames in os.walk(os.getcwd()):
+        for fname in filenames:
+            if fname.lower().endswith(f'.{ext.lower()}'):
+                files.append(os.path.join(root, fname))
+
+    if not files:
+        print(f'No files found for extension: {ext}')
+        return
+
+    global_counter = Counter()
+
+    # Use ThreadPoolExecutor for parallel file processing
+    with ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_file, f): f for f in files}
+        for future in tqdm(as_completed(futures),
+                           total=len(futures),
+                           desc=f'Processing .{ext} files'):
+            global_counter.update(future.result())
+
+    # Save results to CSV
+    output_file = f'{ext}.csv'
+    with open(output_file, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['number_of_appearance', 'line'])
+        for line, count in global_counter.most_common():
+            if count > 1:
+                writer.writerow([count, line])
+
+    print(f'Saved results to {output_file}')
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(f'Usage: python {sys.argv[0]} <ext1> [ext2] ...')
+        sys.exit(1)
+
+    extensions = sys.argv[1:]
+    for ext in extensions:
+        collect_lines_for_extension(ext)
+
+
+if __name__ == '__main__':
+    main()

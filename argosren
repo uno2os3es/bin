@@ -1,0 +1,85 @@
+#!/data/data/com.termux/files/usr/bin/python
+import os
+from multiprocessing import Pool, cpu_count
+from pathlib import Path
+
+import regex as re
+import rignore
+from argostranslate import translate
+from tqdm import tqdm
+
+DIRECTORY = '.'
+
+# Detect non‑ASCII characters
+non_english_pattern = re.compile(r'[^\x00-\x7F]')
+
+
+def is_english(text):
+    return not non_english_pattern.search(text)
+
+
+# Shared cache (each worker gets its own copy)
+translation_cache = {}
+
+
+def translate_name(name):
+    """Worker function: translate a single filename."""
+    base, ext = os.path.splitext(name)
+
+    if is_english(base):
+        return name  # skip
+
+    if base in translation_cache:
+        return translation_cache[base] + ext
+
+    try:
+        translated = translate.translate(base, 'auto', 'en')
+        translation_cache[base] = translated
+        return translated + ext
+    except Exception:
+        return name
+
+
+def rename_files(directory):
+    # Collect all paths first
+    paths = [Path(p) for p in rignore.walk(directory)]
+
+    # Filter only items needing translation
+    names_to_translate = [p.name for p in paths if not is_english(p.name)]
+
+    # Parallel translation
+    with Pool(cpu_count()) as pool:
+        translated_names = list(
+            tqdm(
+                pool.imap(translate_name, names_to_translate),
+                total=len(names_to_translate),
+                desc='Translating filenames',
+            ))
+
+    # Map original → translated
+    translation_map = dict(zip(names_to_translate, translated_names))
+
+    # Apply renaming
+    for fp in paths:
+        if fp.name not in translation_map:
+            continue
+
+        new_name = translation_map[fp.name]
+        if new_name == fp.name:
+            continue
+
+        original_fp = fp
+        new_fp = fp.with_name(new_name)
+
+        counter = 1
+        while new_fp.exists():
+            base, ext = os.path.splitext(new_name)
+            new_fp = fp.with_name(f'{base}_{counter}{ext}')
+            counter += 1
+
+        os.rename(original_fp, new_fp)
+        print(f'Renamed: {original_fp.name} -> {new_fp.name}')
+
+
+if __name__ == '__main__':
+    rename_files(DIRECTORY)

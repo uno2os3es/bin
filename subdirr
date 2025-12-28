@@ -1,0 +1,41 @@
+#!/data/data/com.termux/files/usr/bin/env python3
+
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+
+def main() -> None:
+    cwd = Path.cwd()
+
+    for item in cwd.iterdir():
+        # Only operate on top-level regular files
+        if item.is_file():
+            # Create a subdirectory based on the file name (without extension)
+            target_dir = cwd / item.stem
+            target_dir = str(target_dir).replace('.body',
+                                                 '').replace('.tar', '')
+            target_dir = target_dir[:10]
+            tdir = Path(target_dir)
+            if not tdir.exists():
+                target_dir.mkdir(exist_ok=True)
+
+            # Move the file
+            dest = tdir / item.name
+            dest = Path(dest).touch()
+            shutil.move(str(item), str(dest))
+
+
+#            os.chdir(target_dir)
+# Run external command (myscript)
+#            try:
+#                subprocess.run(['7z', 'x', '*.body'], check=True)
+#                subprocess.run(['7z', 'x', '*.tar'], check=True)
+#                print(f'Processed: {dest}')
+#                os.unlink(dest)
+#            except subprocess.CalledProcessError as e:
+#                print(f'myscript failed for {dest}: {e}')
+
+if __name__ == '__main__':
+    main()

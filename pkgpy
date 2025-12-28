@@ -1,0 +1,22 @@
+#!/data/data/com.termux/files/usr/bin/python
+import subprocess
+
+# Run 'apt list --installed' and capture the output
+result = subprocess.run(['apt', 'search', 'python'],
+                        capture_output=True,
+                        text=True)
+
+# Split the output into lines
+lines = result.stdout.splitlines()
+
+# Filter packages that start with 'python-'
+python_packages = [
+    line.split('/')[0] for line in lines if line.startswith('python-')
+]
+
+# Save to py.txt
+with open('py.txt', 'w') as f:
+    for pkg in python_packages:
+        f.write(pkg + '\n')
+
+print(f'Saved {len(python_packages)} python- packages to py.txt')

@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+"""
+File Similarity Detector using ssdeep fuzzy hashing.
+Finds and groups similar files in a directory tree.
+"""
+
+import csv
+import json
+import os
+import shutil
+import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
+import ssdeep
+from tqdm import tqdm
+
+
+class FileSimilarityDetector:
+
+    def __init__(self, root_dir='.', exclude_dirs=None):
+        self.root_dir = Path(root_dir)
+        self.exclude_dirs = exclude_dirs or [
+            '.git', '__pycache__', 'node_modules'
+        ]
+        self.file_hashes = {}
+
+    def scan_files(self):
+        """Scan directory and return list of all files."""
+        files = []
+        for root, dirs, filenames in os.walk(self.root_dir):
+            # Remove excluded directories from search
+            dirs[:] = [d for d in dirs if d not in self.exclude_dirs]
+
+            for filename in filenames:
+                filepath = Path(root) / filename
+                files.append(filepath)
+
+        return files
+
+    def calculate_hash(self, filepath):
+        """Calculate ssdeep hash for a single file."""
+        try:
+            with open(filepath, 'rb') as f:
+                content = f.read()
+                hash_value = ssdeep.hash(content)
+                return str(filepath), hash_value
+        except Exception as e:
+            print(f'Error hashing {filepath}: {e}', file=sys.stderr)
+            return str(filepath), None
+
+    def hash_all_files(self, files):
+        """Hash all files using parallel processing."""
+        print(f'Hashing {len(files)} files...')
+
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(self.calculate_hash, f) for f in files]
+
+            for future in tqdm(as_completed(futures),
+                               total=len(files),
+                               desc='Hashing'):
+                filepath, hash_value = future.result()
+                if hash_value:
+                    self.file_hashes[filepath] = hash_value
+
+        print(f'Successfully hashed {len(self.file_hashes)} files')
+        return self.file_hashes
+
+    def compare_files(self, file1, hash1, file2, hash2):
+        """Compare two files and return similarity score."""
+        try:
+            score = ssdeep.compare(hash1, hash2)
+            return file1, file2, score
+        except Exception as e:
+            return file1, file2, 0
+
+    def find_similar_pairs(self, threshold=50, top_n=None):
+        """Find all pairs of similar files above threshold."""
+        print(f'Comparing files with threshold {threshold}...')
+
+        files = list(self.file_hashes.keys())
+        total_comparisons = len(files) * (len(files) - 1) // 2
+        similar_pairs = []
+
+        with ThreadPoolExecutor() as executor:
+            futures = []
+            for i in range(len(files)):
+                for j in range(i + 1, len(files)):
+                    f1, f2 = files[i], files[j]
+                    future = executor.submit(self.compare_files, f1,
+                                             self.file_hashes[f1], f2,
+                                             self.file_hashes[f2])
+                    futures.append(future)
+
+            for future in tqdm(as_completed(futures),
+                               total=total_comparisons,
+                               desc='Comparing'):
+                file1, file2, score = future.result()
+                if score >= threshold:
+                    similar_pairs.append((file1, file2, score))
+
+        # Sort by score descending
+        similar_pairs.sort(key=lambda x: x[2], reverse=True)
+
+        if top_n:
+            similar_pairs = similar_pairs[:top_n]
+
+        return similar_pairs
+
+    def create_groups(self, threshold=50):
+        """Group similar files together."""
+        print(f'Creating groups with threshold {threshold}...')
+
+        files = list(self.file_hashes.keys())
+        visited = set()
+        groups = []
+
+        for i, file1 in enumerate(tqdm(files, desc='Grouping')):
+            if file1 in visited:
+                continue
+
+            group = [file1]
+            visited.add(file1)
+
+            for file2 in files[i + 1:]:
+                if file2 in visited:
+                    continue
+
+                score = ssdeep.compare(self.file_hashes[file1],
+                                       self.file_hashes[file2])
+                if score >= threshold:
+                    group.append(file2)
+                    visited.add(file2)
+
+            if len(group) > 1:
+                groups.append(group)
+
+        return groups
+
+    def export_groups_to_files(self, groups, output_dir='output'):
+        """Copy grouped files to output directory."""
+        output_path = Path(output_dir)
+        output_path.mkdir(exist_ok=True)
+
+        print(f'Copying {len(groups)} groups to {output_dir}...')
+
+        for idx, group in enumerate(groups, 1):
+            group_dir = output_path / f'group_{idx}'
+            group_dir.mkdir(exist_ok=True)
+
+            for filepath in group:
+                try:
+                    src = Path(filepath)
+                    dst = group_dir / src.name
+                    shutil.copy2(src, dst)
+                except Exception as e:
+                    print(f'Error copying {filepath}: {e}', file=sys.stderr)
+
+        print(f'Groups exported to {output_dir}')
+
+    def export_pairs_csv(self, pairs, output_file='output/similar_pairs.csv'):
+        """Export similar pairs to CSV file."""
+        output_path = Path(output_file)
+        output_path.parent.mkdir(exist_ok=True)
+
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow(['File 1', 'File 2', 'Similarity Score'])
+            for file1, file2, score in pairs:
+                writer.writerow([file1, file2, score])
+
+        print(f'CSV report saved to {output_file}')
+
+    def export_pairs_json(self,
+                          pairs,
+                          output_file='output/similar_pairs.json'):
+        """Export similar pairs to JSON file."""
+        output_path = Path(output_file)
+        output_path.parent.mkdir(exist_ok=True)
+
+        data = [{
+            'file1': file1,
+            'file2': file2,
+            'similarity_score': score
+        } for file1, file2, score in pairs]
+
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        print(f'JSON report saved to {output_file}')
+
+    def print_pairs(self, pairs):
+        """Print similar pairs to console."""
+        print(f'\nFound {len(pairs)} similar file pairs:\n')
+        for file1, file2, score in pairs:
+            print(f'[{score}%] {file1}')
+            print(f'      ↔ {file2}\n')
+
+
+def main():
+    if len(sys.argv) < 2:
+        print(
+            'Usage: python script.py <threshold> [mode] [top_n] [export_format]'
+        )
+        print('\nModes:')
+        print('  copy   - Group and copy similar files (default)')
+        print('  csv    - Export top pairs to CSV')
+        print('  json   - Export top pairs to JSON')
+        print('  matrix - Display top pairs in console')
+        print('\nExample: python script.py 70 matrix 20 json')
+        sys.exit(1)
+
+    # Parse arguments
+    threshold = int(sys.argv[1])
+    mode = sys.argv[2] if len(sys.argv) > 2 else 'copy'
+    top_n = int(sys.argv[3]) if len(sys.argv) > 3 else 10
+    export_format = sys.argv[4] if len(sys.argv) > 4 else None
+
+    # Initialize detector
+    detector = FileSimilarityDetector()
+
+    # Scan and hash files
+    files = detector.scan_files()
+    print(f'Found {len(files)} files')
+
+    if not files:
+        print('No files found!')
+        sys.exit(0)
+
+    detector.hash_all_files(files)
+
+    # Process based on mode
+    if mode == 'copy':
+        groups = detector.create_groups(threshold)
+        if groups:
+            print(f'Found {len(groups)} groups of similar files')
+            detector.export_groups_to_files(groups)
+        else:
+            print('No similar files found')
+
+    elif mode in ['csv', 'json', 'matrix']:
+        pairs = detector.find_similar_pairs(threshold, top_n)
+
+        if not pairs:
+            print('No similar files found')
+            sys.exit(0)
+
+        if mode == 'matrix':
+            detector.print_pairs(pairs)
+            if export_format == 'csv':
+                detector.export_pairs_csv(pairs)
+            elif export_format == 'json':
+                detector.export_pairs_json(pairs)
+        elif mode == 'csv':
+            detector.export_pairs_csv(pairs)
+        elif mode == 'json':
+            detector.export_pairs_json(pairs)
+
+    else:
+        print(f'Unknown mode: {mode}')
+        print('Valid modes: copy, csv, json, matrix')
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+mc_hist="$HOME/.local/share/mc/history"
+bash_hist="$HOME/.bash_history"
+
+# extract only the command history lines
+awk '/^\[cmd\]/{flag=1;next}/^\[/{flag=0}flag' "$mc_hist" |
+    awk '{$1=$1; print}' |
+    grep -v '^$' >> "$bash_hist"
+
+# make bash reload its history file
+#history -r

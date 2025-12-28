@@ -1,0 +1,60 @@
+#!/data/data/com.termux/files/usr/bin/python
+import hashlib
+import os
+import shutil
+
+
+def find_duplicates(root_dir, skip_symlinks=True):
+    file_hashes = {}
+    for root, dirs, files in os.walk(root_dir):
+        for file in files:
+            file_path = os.path.join(root, file)
+            if skip_symlinks and os.path.islink(file_path):
+                continue
+            with open(file_path, 'rb') as f:
+                file_hash = hashlib.sha256(f.read()).hexdigest()
+            if file_hash in file_hashes:
+                file_hashes[file_hash].append(file_path)
+            else:
+                file_hashes[file_hash] = [file_path]
+    return {
+        hash_val: paths
+        for hash_val, paths in file_hashes.items() if len(paths) > 1
+    }
+
+
+def backup_duplicates(duplicates, backup_dir):
+    for hash_val, paths in duplicates.items():
+        backup_path = os.path.join(backup_dir,
+                                   f'{hash_val}_{os.path.basename(paths[0])}')
+        shutil.copy2(paths[0], backup_path)
+
+
+def symlink_duplicates(duplicates):
+    for hash_val, paths in duplicates.items():
+        original_file = paths[0]
+        for duplicate_file in paths[1:]:
+            os.remove(duplicate_file)
+            os.symlink(original_file, duplicate_file)
+
+
+def reverse_symlinks(backup_dir):
+    for file in os.listdir(backup_dir):
+        backup_file = os.path.join(backup_dir, file)
+        if os.path.isfile(backup_file):
+            hash_val, filename = file.rsplit('_', 1)
+            original_path = os.path.join(os.path.dirname(backup_file),
+                                         filename)
+            if os.path.islink(original_path):
+                os.remove(original_path)
+                shutil.move(backup_file, original_path)
+
+
+if __name__ == '__main__':
+    root_dir = os.getcwd()
+    backup_dir = os.path.join(os.path.expanduser('~'), 'tmp', 'dups')
+    os.makedirs(backup_dir, exist_ok=True)
+
+    duplicates = find_duplicates(root_dir)
+    backup_duplicates(duplicates, backup_dir)
+    symlink_duplicates(duplicates)
