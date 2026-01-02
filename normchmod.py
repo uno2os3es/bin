@@ -42,7 +42,7 @@ def normalize_permissions(homedir: str) -> None:
                 try:
                     for encod in ['utf-8','windows-1251']:
                         with open(path,'r',errors='ignore',encoding=encod) as f:
-                            h10=f.read(4096)
+                            h10=f.read()
                             print(f'{str(h10)}')
                 except:
                     pribt(f'error reading {path}')

@@ -31,7 +31,7 @@ def unzip_file(archive: Path, target_dir: Path) -> bool:
     """
     try:
         result = subprocess.run(
-            ['tar', '-xvf', archive.name],
+            ['unzip', archive.name],
             cwd=target_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

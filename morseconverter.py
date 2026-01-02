@@ -1,5 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/env python3
 
+import os
+import argparse
 import sys
 
 # Morse code dictionary
