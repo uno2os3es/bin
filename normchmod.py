@@ -1,32 +1,65 @@
 #!/data/data/com.termux/files/usr/bin/python
+
 import os
 import stat
+import fastwalk
+from pathlib import Path
 
 
-def normalize_permissions(home_directory):
-    # Set the desired permissions
-    dir_permissions = stat.S_IRWXU | stat.S_IRWXG | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH  # 775
-    file_permissions = stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH  # 664
+def get_mode(path: Path) -> int:
+    """
+    Return permission bits only (e.g. 0o775, 0o664),
+    stripping file type flags.
+    """
+    return stat.S_IMODE(path.stat().st_mode)
 
-    # Walk through the home directory
-    for root, dirs, files in os.walk(home_directory):
-        # Normalize directory permissions
-        for dir_name in dirs:
-            dir_path = os.path.join(root, dir_name)
-            os.chmod(dir_path, dir_permissions)
-            print(
-                f'Set permissions for directory: {dir_path} to {oct(dir_permissions)}'
-            )
 
-        # Normalize file permissions
-        for file_name in files:
-            file_path = os.path.join(root, file_name)
-            os.chmod(file_path, file_permissions)
-            print(
-                f'Set permissions for file: {file_path} to {oct(file_permissions)}'
-            )
+def normalize_permissions(homedir: str) -> None:
+    # Desired permissions
+    DIR_PERM  = 0o775  # rwxrwxr-x
+    FILE_PERM = 0o664  # rw-rw-r--
+
+    for pth in fastwalk.walk(homedir):
+        path = Path(pth)
+        try:
+            current_perm = get_mode(path)
+            if path.is_dir():
+                if current_perm != DIR_PERM:
+                    os.chmod(path, DIR_PERM)
+                    print(
+                        f"Set permissions for directory: {path} "
+                        f"from {oct(current_perm)} to {oct(DIR_PERM)}"
+                    )
+
+            elif path.is_file():
+            
+                if current_perm != FILE_PERM:
+                    os.chmod(path, FILE_PERM)
+                    print(
+                        f"Set permissions for file: {path} "
+                        f"from {oct(current_perm)} to {oct(FILE_PERM)}"
+                    )
+                try:
+                    for encod in ['utf-8','windows-1251']:
+                        with open(path,'r',errors='ignore',encoding=encod) as f:
+                            h10=f.read(4096)
+                            print(f'{str(h10)}')
+                except:
+                    pribt(f'error reading {path}')
+
+        except PermissionError as e:
+            print(f"Permission denied: {path} ({e})")
+
+        except FileNotFoundError:
+            # File may disappear during traversal
+            continue
+
+        except OSError as e:
+            print(f"OS error on {path}: {e}")
 
 
 if __name__ == "__main__":
-    home_dir = os.environ['HOME']  # Get the home directory
-    normalize_permissions(home_dir)
+#    home_dir = os.environ.get("HOME")
+#    if not home_dir:
+#        raise RuntimeError("HOME environment variable not set")
+    normalize_permissions('.')

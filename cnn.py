@@ -8,7 +8,7 @@ from multiprocessing import Pool, cpu_count
 # File extensions to delete
 FILE_EXTENSIONS = ['.pyc', '.log', '.bak']
 # Directory names to delete
-DIR_NAMES = ['__pycache__', 'dist', 'target']
+DIR_NAMES = ['__pycache__', 'dist', 'target','build']
 
 
 def remove_path(path) -> None:

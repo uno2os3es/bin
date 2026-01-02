@@ -3,7 +3,7 @@ import os
 import shutil
 import sysconfig
 from pathlib import Path
-
+import fastwalk
 
 def format_size(bytes_size: int) -> str:
     """Format size in KB or MB for readability."""
@@ -22,8 +22,8 @@ def get_skip_dirs():
               'regex'):
         skip.add(str(site_packages / d))
     skip.add('/data/data/com.termux/files/home/bin')
-    for k in skip:
-        print(f'{k} will not be processed')
+#    for k in skip:
+ #       print(f'{k} will not be processed')
     return skip
 
 
@@ -34,7 +34,8 @@ def clean_pyc_and_pycache(start_dir: Path = Path.cwd()):
 
     skip_dirs = get_skip_dirs()
 
-    for root, dirs, files in os.walk(start_dir, topdown=False):
+    fol
+    r root, dirs, files in os.walk(start_dir, topdown=False):
         # Skip .git dirs
         if '.git' in Path(root).parts:
             continue
@@ -43,7 +44,7 @@ def clean_pyc_and_pycache(start_dir: Path = Path.cwd()):
         if any(str(Path(root)).startswith(sd) for sd in skip_dirs):
             continue
 
-        # Remove .pyc files
+ebb p0        # Remove .pyc files
         for f in files:
             if f.endswith('.pyc'):
                 file_path = Path(root) / f
