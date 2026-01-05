@@ -15,11 +15,11 @@ with open(input_file, 'r') as file:
         if capture:
             if line == '':  # Stop capturing on an empty line or end of section
                 break
-            cleaned_line = line.split(
-                '=',
-                1)[-1].strip()  # Get the part after '=' and strip whitespace
+            cleaned_line = line.split('=', 1)[
+                -1
+            ].strip()  # Get the part after '=' and strip whitespace
             cmdline_section.append(cleaned_line)
-soniq=list(set(cmdline_section))
+soniq = list(set(cmdline_section))
 
 with open(output_file, 'a') as file:
     for cmd in soniq:

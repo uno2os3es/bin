@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-2# Folders to exclude (exact names)
-EXCLUDED = {'.git', 'tmp', 'var', '.cache','etc'}
+2  # Folders to exclude (exact names)
+EXCLUDED = {'.git', 'tmp', 'var', '.cache', 'etc'}
 
 
 def delete_empty_dirs(root: Path) -> None:
@@ -25,7 +25,6 @@ def delete_empty_dirs(root: Path) -> None:
                     print(f'Removing empty directory: {path}')
                     path.rmdir()
             except PermissionError:
-
                 print(f'Permission denied: {path}')
             except OSError as e:
                 # Directory not empty or some other OS error

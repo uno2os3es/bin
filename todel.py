@@ -11,8 +11,7 @@ def delete_multiline_string_from_files(search_string, directory='.') -> None:
             file_path = os.path.join(dirpath, filename)
 
             # Only process files (skip directories)
-            if os.path.isfile(file_path) and os.path.splitext(
-                    file_path)[1] in EXT:
+            if os.path.isfile(file_path) and os.path.splitext(file_path)[1] in EXT:
                 try:
                     with open(file_path, encoding='utf-8') as file:
                         content = file.read()

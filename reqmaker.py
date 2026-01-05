@@ -7,8 +7,7 @@ from typing import Iterable, List, Set
 import regex as re
 
 REQUIREMENTS_FILE = Path('requirements.txt')
-MISSING_PATTERN = re.compile(
-    r'requires ([A-Za-z0-9_\-]+), which is not installed\.')
+MISSING_PATTERN = re.compile(r'requires ([A-Za-z0-9_\-]+), which is not installed\.')
 
 
 def run_pip_check() -> str:
@@ -52,9 +51,7 @@ def save_to_requirements(packages: Iterable[str]) -> None:
     merged = sorted(existing | set(packages))
 
     REQUIREMENTS_FILE.write_text('\n'.join(merged) + '\n')
-    print(
-        f'✔️ Saved {len(packages)} new package(s). Total: {len(merged)} in requirements.txt'
-    )
+    print(f'✔️ Saved {len(packages)} new package(s). Total: {len(merged)} in requirements.txt')
 
 
 def main() -> None:

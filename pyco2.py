@@ -4,6 +4,8 @@ import shutil
 import sysconfig
 from fastwalk import walk
 from pathlib import Path
+
+
 def format_size(bytes_size: int) -> str:
     """Format size in KB or MB for readability."""
     if bytes_size < 1024 * 1024:
@@ -17,8 +19,7 @@ def get_skip_dirs():
     skip = set()
 
     site_packages = Path(sysconfig.get_paths()['purelib'])
-    for d in ('pip', 'setuptools', 'wheel', 'packaging', 'importlib-metadata',
-              'regex'):
+    for d in ('pip', 'setuptools', 'wheel', 'packaging', 'importlib-metadata', 'regex'):
         skip.add(str(site_packages / d))
     skip.add('/data/data/com.termux/files/home/bin')
     return skip
@@ -28,17 +29,17 @@ def clean_pyc_and_pycache(start_dir: Path = Path.cwd()):
     total_size = 0
     dirs_removed = 0
     files_removed = 0
-    d2r=[]
+    d2r = []
     skip_dirs = get_skip_dirs()
     for pth in walk(str(start_dir)):
-        path=Path(pth)
-        if path.is_dir() and path.name=='__pycache__':
+        path = Path(pth)
+        if path.is_dir() and path.name == '__pycache__':
             d2r.append(path)
         if path.is_dir() and '.git' in path.parts:
             continue
         if path.is_dir() and any(str(path).startswith(sd) for sd in skip_dirs):
-             continue
-        if path.is_file() and  path.suffix=='.pyc':
+            continue
+        if path.is_file() and path.suffix == '.pyc':
             try:
                 size = path.stat().st_size
                 path.unlink()

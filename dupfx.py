@@ -6,7 +6,6 @@ from collections import defaultdict
 from pathlib import Path
 
 import xxhash
-from rich.progress import Progress
 
 # ----------------------------------------
 # GLOBAL STORAGE
@@ -84,22 +83,16 @@ def hash_groups_in_parallel(groups):
 
     hash_groups = defaultdict(list)
 
-    with Progress() as progress:
-        task = progress.add_task('[cyan]Hashing files...',
-                                 total=len(candidates))
+    
+    with cf.ProcessPoolExecutor() as executor:
+        futures = {executor.submit(hash_file, str(p)): p for p in candidates}
+        for future in cf.as_completed(futures):
+            path, h = future.result()
 
-        with cf.ProcessPoolExecutor() as executor:
-            futures = {
-                executor.submit(hash_file, str(p)): p
-                for p in candidates
-            }
-            for future in cf.as_completed(futures):
-                path, h = future.result()
-                progress.update(task, advance=1)
-                if h is None:
-                    SKIPPED_PATHS.append(str(path))
-                    continue
-                hash_groups[h].append(str(path))
+            if h is None:
+                SKIPPED_PATHS.append(str(path))
+                continue
+            hash_groups[h].append(str(path))
 
     return {h: ps for h, ps in hash_groups.items() if len(ps) > 1}
 
@@ -130,8 +123,7 @@ def auto_delete_duplicates(dups) -> None:
 
 def report_duplicates(dups):
     dup_count = sum(len(files) - 1 for files in dups.values())
-    dup_size = sum(
-        Path(f).stat().st_size for files in dups.values() for f in files[1:])
+    dup_size = sum(Path(f).stat().st_size for files in dups.values() for f in files[1:])
     print(f'\n📊 Report:')
     print(f'   • Duplicate groups: {len(dups)}')
     print(f'   • Total duplicate files: {dup_count}')

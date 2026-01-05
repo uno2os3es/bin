@@ -4,6 +4,7 @@ import shutil
 import sysconfig
 from pathlib import Path
 
+
 def format_size(bytes_size: int) -> str:
     """Format size in KB or MB for readability."""
     if bytes_size < 1024 * 1024:
@@ -17,12 +18,11 @@ def get_skip_dirs():
     skip = set()
 
     site_packages = Path(sysconfig.get_paths()['purelib'])
-    for d in ('pip', 'setuptools', 'wheel', 'packaging', 'importlib-metadata',
-              'regex'):
+    for d in ('pip', 'setuptools', 'wheel', 'packaging', 'importlib-metadata', 'regex'):
         skip.add(str(site_packages / d))
     skip.add('/data/data/com.termux/files/home/bin')
-#    for k in skip:
- #       print(f'{k} will not be processed')
+    #    for k in skip:
+    #       print(f'{k} will not be processed')
     return skip
 
 
