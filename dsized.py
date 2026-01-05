@@ -6,10 +6,9 @@ import sys
 import urllib.request
 import urllib.error
 from pathlib import Path
+import os
 
-
-MAX_DOWNLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
-
+MAX_DOWNLOAD_SIZE = 1 * 1024 * 1024  # 1 MB
 
 def fetch_content_length(url: str) -> int | None:
     """Try to fetch Content-Length via HEAD or partial GET."""
@@ -30,7 +29,6 @@ def fetch_content_length(url: str) -> int | None:
         length = response.headers.get("Content-Length")
         return int(length) if length else None
 
-
 def format_size(size_bytes: int) -> str:
     units = ["B", "KB", "MB", "GB", "TB"]
     size = float(size_bytes)
@@ -39,7 +37,6 @@ def format_size(size_bytes: int) -> str:
             return f"{size:.2f} {unit}"
         size /= 1024
     return f"{size:.2f} PB"
-
 
 def download_file(url: str, dest_dir: Path) -> None:
     """Download file to dest_dir using last path component as filename."""
@@ -51,24 +48,29 @@ def download_file(url: str, dest_dir: Path) -> None:
     except Exception as e:
         print(f"Failed to download {url}: {e}")
 
-
 def process_url(url: str, download_dir: Path | None = None) -> str:
-    """Fetch size and optionally download if under 5MB."""
+    """Fetch size and optionally download if under limit."""
     try:
         size = fetch_content_length(url)
         if size is None:
             return f"{url}\tUnknown"
 
         size_str = format_size(size)
+        print(f"URL: {url}, Size: {size_str}")
 
-        # Download if requested and under limit
+        # Ask user if they want to download the file
         if download_dir and size <= MAX_DOWNLOAD_SIZE:
-            download_file(url, download_dir)
+            user_input = input(f"Do you want to download this file (size: {size_str})? (y/n): ").strip().lower()
+            if user_input == 'y':
+                download_file(url, download_dir)
+            else:
+                print("Download skipped.")
+        else:
+            print("File is too large to download or no download directory specified.")
 
         return f"{url}\t{size_str}"
     except Exception as exc:
         return f"{url}\tError: {exc}"
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(
@@ -77,13 +79,17 @@ def main() -> None:
     parser.add_argument("input", help="Download URL or file containing URLs")
     parser.add_argument(
         "-d", "--download",
-        help="Directory to download files smaller than 5MB"
+        help="Directory to download files smaller than 1MB"
     )
     args = parser.parse_args()
 
-    download_dir = Path(args.download) if args.download else None
-    if download_dir:
-        download_dir.mkdir(parents=True, exist_ok=True)
+    # Set default download directory to user's Downloads folder if not specified
+    if args.download:
+        download_dir = Path(args.download)
+    else:
+        download_dir = Path(os.path.expanduser("~/Downloads"))
+
+    download_dir.mkdir(parents=True, exist_ok=True)
 
     input_path = Path(args.input)
     if input_path.is_file():
@@ -95,7 +101,6 @@ def main() -> None:
         print(f"Updated file: {input_path} ({len(updated_lines)} URLs processed)")
     else:
         print(process_url(args.input, download_dir))
-
 
 if __name__ == "__main__":
     main()

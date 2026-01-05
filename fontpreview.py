@@ -5,7 +5,7 @@ import pathlib
 
 FONT_EXTENSIONS = ('.ttf', '.otf', '.woff', '.woff2', '.eot', '.svg')
 OUTPUT_HTML = 'fonts_preview.html'
-FONT_SIZES = [14, 22]
+FONT_SIZES = [22]
 
 
 def find_fonts(root_dir='.'):
@@ -27,7 +27,7 @@ def generate_html(font_files):
         "<meta charset='UTF-8'>",
         '<title>Font Preview</title>',
         '<style>',
-        "body { font-family: 'fontello.woff2'; src: url('./fonts/fontello.woff2'); padding: 20px; }",
+        "body { font-family: 'fontello.woff2'; src: url('./fonts/fontello.woff2'); padding: 14px; }",
         ".font-preview { font-family: 'fontello.woff2'; src: url('./fonts/fontello.woff2'); margin-bottom: 50px; }",
         ".h2 {font-family: 'fontello.woff2'; src: url('./fonts/fontello.woff2');}",
         '</style>',
@@ -37,8 +37,8 @@ def generate_html(font_files):
     ]
     for font_path in font_files:
         font_name = pathlib.Path(font_path).name
-        html.append("<div class='font-preview'>"HOM)HOM
-        html.append(f'<h2>{font_name}</h2>')
+        html.append("<div class='font-preview'>")
+#        html.append(f'<h2>{font_name}</h2>')
         # Embed font using @font-fac
         html.append('<style>')
         html.append(
@@ -46,7 +46,7 @@ def generate_html(font_files):
         )
         html.append('</style>')
         html.extend(
-            f'<p style=\'font-family: "{font_name}"; font-size: {size}px;\'>هنر برتر از گوهر امد پدید jumps over the lazy dog ({size}px)</p>'
+            f'<p style=\'font-family: "{font_name}"; font-size: {size}px;\'>({font_path})</p>'
             for size in FONT_SIZES
         )
         html.append('</div>')

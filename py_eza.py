@@ -86,13 +86,7 @@ def get_git_status_for_dir(path: str) -> dict[str, dict[str, str]]:
 
 
 class Entry:
-
-    def __init__(self,
-                 path: str,
-                 name: str,
-                 stat_obj,
-                 link_target=None,
-                 git=None) -> None:
+    def __init__(self, path: str, name: str, stat_obj, link_target=None, git=None) -> None:
         self.path = path
         self.name = name
         self.stat = stat_obj
@@ -107,8 +101,7 @@ class Entry:
 
 def mode_to_string(mode: int) -> str:
     chars = []
-    chars.append(
-        'd' if stat.S_ISDIR(mode) else 'l' if stat.S_ISLNK(mode) else '-')
+    chars.append('d' if stat.S_ISDIR(mode) else 'l' if stat.S_ISLNK(mode) else '-')
     perms = [
         (stat.S_IRUSR, 'r'),
         (stat.S_IWUSR, 'w'),
@@ -138,10 +131,7 @@ def human_size(n: int) -> str:
 # ------------------------------------------------------------
 
 
-def output_long(entries: list[Entry],
-                icons=False,
-                colors=True,
-                human=True) -> None:
+def output_long(entries: list[Entry], icons=False, colors=True, human=True) -> None:
     for e in entries:
         st = e.stat
         mode_s = mode_to_string(st.st_mode)
@@ -166,9 +156,7 @@ def output_long(entries: list[Entry],
         if e.git:
             gitmark = f' {e.git["raw"]}'
 
-        print(
-            f'{mode_s} {nlink:2} {user:8} {group:8} {size:>6} {tstr} {name}{gitmark}'
-        )
+        print(f'{mode_s} {nlink:2} {user:8} {group:8} {size:>6} {tstr} {name}{gitmark}')
 
 
 # ------------------------------------------------------------
@@ -176,10 +164,7 @@ def output_long(entries: list[Entry],
 # ------------------------------------------------------------
 
 
-def output_columns(entries: list[Entry],
-                   icons=False,
-                   colors=True,
-                   width=None) -> None:
+def output_columns(entries: list[Entry], icons=False, colors=True, width=None) -> None:
     # Determine width
     if width is None:
         env_cols = os.environ.get('COLUMNS')
@@ -206,7 +191,7 @@ def output_columns(entries: list[Entry],
         import regex as re
 
         plain = re.sub(r'\x1b\[[0-9;]*m', '', text)
-        return plain[:max_len - 1] + '…'
+        return plain[: max_len - 1] + '…'
 
     rendered = []
     for e in entries:
@@ -219,7 +204,7 @@ def output_columns(entries: list[Entry],
         rendered.append(txt)
 
     for i in range(0, len(rendered), cols):
-        row = rendered[i:i + cols]
+        row = rendered[i : i + cols]
         padded = [r + ' ' * (col_width - real_len(r)) for r in row]
         print(''.join(padded))
 
@@ -312,20 +297,22 @@ def print_entries(entries: list[Entry], args) -> None:
     if args.json:
         out = []
         for e in entries:
-            out.append({
-                'name':
-                e.name,
-                'size':
-                e.stat.st_size,
-                'mode':
-                mode_to_string(e.stat.st_mode),
-                'mtime':
-                e.stat.st_mtime,
-                'git':
-                e.git,
-                'type': ('dir' if stat.S_ISDIR(e.stat.st_mode) else
-                         'link' if stat.S_ISLNK(e.stat.st_mode) else 'file'),
-            })
+            out.append(
+                {
+                    'name': e.name,
+                    'size': e.stat.st_size,
+                    'mode': mode_to_string(e.stat.st_mode),
+                    'mtime': e.stat.st_mtime,
+                    'git': e.git,
+                    'type': (
+                        'dir'
+                        if stat.S_ISDIR(e.stat.st_mode)
+                        else 'link'
+                        if stat.S_ISLNK(e.stat.st_mode)
+                        else 'file'
+                    ),
+                }
+            )
         print(json.dumps(out, indent=2))
         return
 
@@ -344,10 +331,7 @@ def print_entries(entries: list[Entry], args) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser()
-    p.add_argument('paths',
-                   nargs='*',
-                   default=['.'],
-                   help='Files or directories')
+    p.add_argument('paths', nargs='*', default=['.'], help='Files or directories')
     p.add_argument('-l', '--long', action='store_true')
     p.add_argument('-a', '--all', action='store_true')
     p.add_argument('-R', '--recursive', action='store_true')
@@ -377,10 +361,7 @@ def main() -> None:
             if args.git:
                 gitmap = get_git_status_for_dir(os.path.dirname(path))
                 git = gitmap.get(os.path.basename(path))
-            e = Entry(os.path.dirname(path),
-                      os.path.basename(path),
-                      st,
-                      git=git)
+            e = Entry(os.path.dirname(path), os.path.basename(path), st, git=git)
             print_entries([e], args)
             continue
 

@@ -60,9 +60,7 @@ def distribute_files(files, folders, base_dir):
 
         try:
             shutil.move(filepath, dest_path)
-            print(
-                f'Moved {os.path.basename(filepath)} ({size} bytes) to {folders[folder_idx][2]}'
-            )
+            print(f'Moved {os.path.basename(filepath)} ({size} bytes) to {folders[folder_idx][2]}')
         except Exception as e:
             print(f'Failed to move {filepath}: {e}')
 
