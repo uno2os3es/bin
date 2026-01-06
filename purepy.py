@@ -1,37 +1,30 @@
 #!/data/data/com.termux/files/usr/bin/env python3
 
 import sys
-
 import requests
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def has_native_wheels(info) -> bool:
     urls = info.get("urls", [])
     for u in urls:
         filename = u.get("filename", "").lower()
-        if any(
-            ext in filename
-            for ext in [".so", ".pyd", ".dll", "win_amd64", "manylinux", "macosx"]
-        ):
+        if any(ext in filename for ext in [".so", ".pyd", ".dll", "win_amd64", "manylinux", "macosx"]):
             return True
     return False
 
-
-def check_package(name) -> str:
+def check_package(name) -> tuple:
     url = f"https://pypi.org/pypi/{name}/json"
-    resp = requests.get(url)
-    if resp.status_code != 200:
-        return "not_found"
-    with open(str(name) + ".json", "w") as fo:
-        fo.write(str(resp.json()))
-
-    info = resp.json()
-    if has_native_wheels(info):
-        print(f"{name} is not pure")
-        return "native"
-    print(f"{name} is pure python")
-    return "pure"
-
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return (name, "not_found")
+        info = resp.json()
+        if has_native_wheels(info):
+            return (name, "native")
+        else:
+            return (name, "pure")
+    except Exception as e:
+        return (name, "not_found")
 
 def main() -> None:
     if len(sys.argv) < 2:
@@ -40,37 +33,37 @@ def main() -> None:
 
     infile = sys.argv[1]
 
-    pure = []
-    native = []
-    missing = []
+    pure = set()
+    native = set()
+    missing = set()
 
     with open(infile) as f:
-        for line in f:
-            pkg = line.strip()
-            if not pkg:
-                continue
-            result = check_package(pkg)
+        packages = [line.strip() for line in f if line.strip()]
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(check_package, pkg): pkg for pkg in packages}
+        for future in as_completed(futures):
+            pkg, result = future.result()
             if result == "pure":
-                pure.append(pkg)
+                pure.add(pkg)
             elif result == "native":
-                native.append(pkg)
+                native.add(pkg)
             else:
-                missing.append(pkg)
+                missing.add(pkg)
 
     with open("pure_python.txt", "w") as f:
-        f.write("\n".join(sorted(set(pure))))
+        f.write("\n".join(sorted(pure)))
 
     with open("native_extensions.txt", "w") as f:
-        f.write("\n".join(sorted(set(native))))
+        f.write("\n".join(sorted(native)))
 
     with open("not_found.txt", "w") as f:
-        f.write("\n".join(sorted(set(missing))))
+        f.write("\n".join(sorted(missing)))
 
     print("Done!")
     print(f"Pure Python: {len(pure)}")
     print(f"Native-required: {len(native)}")
     print(f"Not found: {len(missing)}")
-
 
 if __name__ == "__main__":
     main()

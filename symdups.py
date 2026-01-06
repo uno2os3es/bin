@@ -12,7 +12,7 @@ from datetime import datetime
 import xxhash
 
 BACKUP_FILE = ".symlink_backup.json"
-MIN_FILE_SIZE = 128  # Minimum file size in bytes
+MIN_FILE_SIZE = 8  # Minimum file size in bytes
 
 
 def calculate_file_hash(filepath, chunk_size=8192):

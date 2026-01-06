@@ -31,7 +31,7 @@ def unzip_file(archive: Path, target_dir: Path) -> bool:
     """
     try:
         result = subprocess.run(
-            ["unzip", archive.name],
+            ["7z",'x', archive.name],
             cwd=target_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -62,7 +62,7 @@ def main() -> None:
         ok = unzip_file(moved_file, target_dir)
 
         if ok:
-            moved_file.unlink()  # delete original archive
+#            moved_file.unlink()  # delete original archive
             print(f"[OK] Unzipped and removed: {item.name}")
         else:
             print(f"[SKIP] Not a zip or unzip failed: {item.name}")
