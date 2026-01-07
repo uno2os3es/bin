@@ -1,7 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/env python3
-
+import os
 import sys
-
+import pathlib
+from pathlib import Path
 import pytesseract
 from PIL import Image, ImageFilter, ImageOps
 

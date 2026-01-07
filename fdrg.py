@@ -13,8 +13,7 @@ from queue import Queue
 from pathlib import Path
 import fnmatch
 
-import fastwalk  # user-provided Rust-backed walker
-
+import rignore
 # -------------------- Globals --------------------
 
 pause_event = threading.Event()
@@ -199,15 +198,14 @@ def main():
     print('=' * 80)
 
     files = []
-    for entry in fastwalk.walk(root, follow_symlinks=False):
-        path = Path(entry.path)
-        if entry.is_dir:
+    for entry in rignore.walk(root):
+        if entry.is_dir():
             continue
-        if should_skip_file(path):
+        if should_skip_file(entry):
             continue
-        if is_excluded(path, excluded_dirs, excluded_patterns):
+        if is_excluded(entry, excluded_dirs, excluded_patterns):
             continue
-        files.append(path)
+        files.append(entry)
 
     print(f'[INFO] Files queued: {len(files)}\n')
 

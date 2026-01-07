@@ -47,7 +47,15 @@ def create_symlink(out_file):
             print(f'Symlink already exists: {symlink_path}')
         except Exception as e:
             print(f'Error creating symlink: {e}', file=sys.stderr)
-
+    if ext and os.path.abspath(os.getcwd()) == os.path.abspath(os.path.expanduser('~/bashbin')):
+        symlink_path = os.path.join(os.path.dirname(out_file), name_without_ext)
+        try:
+            os.symlink(out_file, symlink_path)
+            print(f'Symlink created: {symlink_path} -> {out_file}')
+        except FileExistsError:
+            print(f'Symlink already exists: {symlink_path}')
+        except Exception as e:
+            print(f'Error creating symlink: {e}', file=sys.stderr)
 
 def main():
     if len(sys.argv) != 2:
@@ -59,6 +67,7 @@ def main():
 
     cwd = os.path.abspath(os.getcwd())
     bin_dir = os.path.abspath(os.path.expanduser('~/bin'))
+    bin_dir2 = os.path.abspath(os.path.expanduser('~/bashbin'))
 
     final_content = clipboard
 
@@ -72,6 +81,8 @@ def main():
 
     # Make executable only in ~/bin
     if cwd == bin_dir:
+        os.chmod(out_file, 0o755)
+    if cwd == bin_dir2:
         os.chmod(out_file, 0o755)
 
     # Create symlink if the output file has an extension

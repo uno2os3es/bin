@@ -127,9 +127,8 @@ def main() -> None:
     changed_count = sum(1 for r in results if r)
     print(f'Done. {changed_count} files modified.')
 
-    if args.time:
-        duration = time.perf_counter() - start_time
-        print(f'Total Runtime: {duration:.4f} seconds')
+    duration = time.perf_counter() - start_time
+    print(f'Total Runtime: {duration:.4f} seconds')
 
 
 if __name__ == '__main__':

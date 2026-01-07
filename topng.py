@@ -3,7 +3,7 @@ import sys
 import cv2
 import numpy as np
 from pathlib import Path
-
+from PIL import Image
 # Supported formats that OpenCV can generally decode
 SUPPORTED_FORMATS = {'.png', '.bmp', '.tiff', '.webp', '.ico', '.jpg', '.jpeg'}
 

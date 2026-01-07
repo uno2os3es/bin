@@ -1,8 +1,4 @@
 #!/data/data/com.termux/files/usr/bin/env python
-"""
-Professional Package Wheel Builder
-Rebuilds wheels from installed packages with all assets (code, scripts, data)
-"""
 
 import argparse
 import base64
@@ -23,7 +19,6 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 class WheelBuilder:
-    """Builds proper wheel files from installed packages"""
 
     def __init__(
         self,
@@ -38,7 +33,6 @@ class WheelBuilder:
             parents=True, exist_ok=True
         )
 
-        # Find venv root
         self.venv_root = self._find_venv_root()
         self.bin_dir = self._find_bin_dir()
         self.share_dir = (
@@ -48,7 +42,6 @@ class WheelBuilder:
         )
 
     def _find_venv_root(self) -> Optional[Path]:
-        """Walk up from site-packages to find venv root"""
         current = self.site_packages
         for _ in range(5):
             if (current / "pyvenv.cfg").exists():
@@ -332,7 +325,6 @@ class WheelBuilder:
                 _,
             ) = self._get_wheel_tags()
 
-        # Find additional assets
         scripts = self._find_scripts_for_package(
             pkg_name, records
         )
@@ -349,17 +341,14 @@ class WheelBuilder:
                 f"  Found {len(data_files)} data file(s)"
             )
 
-        # Build wheel filename
-        wheel_name = f'{pkg_name.replace("-", "_")} -{version} -{python_tag} -{abi_tag} -{platform_tag}.whl'
+        wheel_name = f'{pkg_name.replace("-", "_")}-{version}-{python_tag}-{abi_tag}-{platform_tag}.whl'
         wheel_path = self.output_dir / wheel_name
 
-        # Create wheel
         with (
             tempfile.TemporaryDirectory() as tmpdir
         ):
             tmp_path = Path(tmpdir)
 
-            # Prepare dist-info directory name for inside wheel
             dist_info_name = (
                 f"{pkg_name}-{version}.dist-info"
             )
@@ -368,7 +357,6 @@ class WheelBuilder:
             )
             dist_info_dest.mkdir(parents=True)
 
-            # Prepare data directory if needed
             data_dir_name = (
                 f"{pkg_name}-{version}.data"
             )
@@ -376,7 +364,6 @@ class WheelBuilder:
 
             new_record = []
 
-            # Copy files from RECORD
             for path_str, info in records.items():
                 src = (
                     self.site_packages / path_str
@@ -384,15 +371,12 @@ class WheelBuilder:
                 if not src.exists():
                     continue
 
-                # Determine destination
                 if ".dist-info" in path_str:
-                    # Metadata files go to dist-info
                     dest = (
                         dist_info_dest
                         / Path(path_str).name
                     )
                 else:
-                    # Regular files go to root
                     dest = tmp_path / path_str
 
                 dest.parent.mkdir(
@@ -400,7 +384,6 @@ class WheelBuilder:
                 )
                 shutil.copy2(src, dest)
 
-                # Record entry (relative to wheel root)
                 rel_path = dest.relative_to(
                     tmp_path
                 )
@@ -416,7 +399,6 @@ class WheelBuilder:
                     )
                 )
 
-            # Add scripts
             if scripts:
                 data_dir = (
                     tmp_path / data_dir_name
@@ -448,7 +430,6 @@ class WheelBuilder:
                         )
                     )
 
-            # Add data files
             if data_files:
                 if not data_dir:
                     data_dir = (
@@ -489,7 +470,6 @@ class WheelBuilder:
                         )
                     )
 
-            # Create/update WHEEL file
             wheel_file = dist_info_dest / "WHEEL"
             with open(wheel_file, "w") as f:
                 f.write("Wheel-Version: 1.0\n")
@@ -503,7 +483,6 @@ class WheelBuilder:
                     f"Tag: {python_tag}-{abi_tag}-{platform_tag}\n"
                 )
 
-            # Add WHEEL to record
             rel_path = wheel_file.relative_to(
                 tmp_path
             )
@@ -519,7 +498,6 @@ class WheelBuilder:
                 )
             )
 
-            # Write new RECORD
             record_file = (
                 dist_info_dest / "RECORD"
             )
@@ -532,7 +510,6 @@ class WheelBuilder:
                 writer = csv.writer(f)
                 for row in new_record:
                     writer.writerow(row)
-                # RECORD itself has empty hash and size
                 writer.writerow(
                     [
                         f"{dist_info_name}/RECORD",
@@ -541,7 +518,6 @@ class WheelBuilder:
                     ]
                 )
 
-            # Create wheel archive
             with zipfile.ZipFile(
                 wheel_path,
                 "w",
